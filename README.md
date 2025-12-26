@@ -59,12 +59,20 @@ Datafication.Server.Core transforms your ASP.NET Core application into a powerfu
 
 > **Note**: Datafication.Server.Core is currently in pre-release. NuGet package availability on nuget.org is pending signing certificate approval.
 
-**For Testing and Experimentation:**
+**Running the Samples:**
 
-The `samples` directory contains a `NuGet.config` and a `packages` directory with pre-built packages. Reference this local source to test and experiment with the SDK:
+The `samples` directory includes pre-built packages and a `NuGet.config` that references them. The sample projects are ready to run as-is:
 
 ```bash
-# Add reference using the local package source (configured in samples/NuGet.config)
+cd samples/DataBlockServer
+dotnet run
+```
+
+**Using the SDK in Your Own Project:**
+
+To use the SDK in your own project, copy the `NuGet.config` and `packages` directory from `samples` into your project directory, then add the package reference:
+
+```bash
 dotnet add package Datafication.Server.Core
 ```
 
