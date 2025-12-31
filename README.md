@@ -9,6 +9,7 @@ Datafication.Server.Core transforms your ASP.NET Core application into a powerfu
 ### Key Features
 
 - **Instant REST API**: Add DataBlock HTTP endpoints with one line of code
+- **Comprehensive Query Engine**: Full pandas-like query capabilities via REST - filtering, sorting, aggregation, grouping, window functions, joins, computed columns, and data transformations
 - **Meta Registry Architecture**: DataBlocks managing DataBlock registrations - eating our own dog food
 - **JWT Authentication**: Built-in support for secure Bearer token authentication with customizable policies
 - **Enterprise Caching**: Integrated memory cache support for high-performance data access
@@ -35,6 +36,7 @@ Datafication.Server.Core transforms your ASP.NET Core application into a powerfu
   - [Authentication Configuration](#authentication-configuration)
   - [Using the REST API](#using-the-rest-api)
   - [Row Operations](#row-operations)
+  - [Comprehensive DataBlock Querying](#comprehensive-datablock-querying)
   - [Registry Analytics](#registry-analytics)
   - [Advanced Querying](#advanced-querying)
   - [Connector and Sink Registration](#connector-and-sink-registration)
@@ -453,6 +455,229 @@ curl -X DELETE \
      http://localhost:5000/api/data/rows/employees/5
 ```
 
+### Comprehensive DataBlock Querying
+
+The `/query/{id}` endpoint provides full pandas-like query capabilities via REST. Execute complex operations including filtering, sorting, aggregation, grouping, window functions, joins, and data transformations in a single request.
+
+**Basic Query Example:**
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "where": [
+         {"column": "Department", "operator": "eq", "value": "Engineering"},
+         {"column": "Salary", "operator": "gte", "value": 80000}
+       ],
+       "sort": {"column": "Salary", "direction": "desc"},
+       "select": ["Name", "Department", "Salary"],
+       "take": 10
+     }' \
+     http://localhost:5000/api/data/query/employees
+```
+
+**Supported Query Operations:**
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `where` | Filter rows by conditions | `{"column": "status", "operator": "eq", "value": "active"}` |
+| `whereIn` | Filter by value collection | `{"column": "category", "values": ["A", "B", "C"]}` |
+| `whereNot` | Exclude specific value | `{"column": "type", "value": "deleted"}` |
+| `sort` | Sort results | `{"column": "created_at", "direction": "desc"}` |
+| `select` | Project columns | `["Name", "Email", "Salary"]` |
+| `skip` / `take` | Pagination | `"skip": 100, "take": 50` |
+| `sample` | Random sampling | `"sample": 100, "sampleSeed": 42` |
+| `aggregate` | Simple aggregation | `{"type": "sum", "columns": ["amount"]}` |
+| `groupBy` | Group with aggregation | `{"column": "category", "aggregations": {"price": "mean"}}` |
+| `dropDuplicates` | Remove duplicates | `{"columns": ["email"], "keep": "first"}` |
+| `dropNulls` | Remove null rows | `{"mode": "any"}` |
+| `fillNulls` | Fill null values | `{"method": "mean", "columns": ["price"]}` |
+| `window` | Window functions | `{"column": "sales", "function": "cumsum"}` |
+| `compute` | Computed columns | `{"resultColumn": "total", "expression": "[price] * [qty]"}` |
+| `merge` | Join DataBlocks | `{"otherDataBlockId": "orders", "keyColumn": "id"}` |
+| `melt` | Unpivot (wide to long) | `{"fixedColumns": ["id"], "meltedColumnName": "metric"}` |
+| `transpose` | Transpose rows/columns | `{"headerColumnName": "name"}` |
+
+**GroupBy with Aggregations:**
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "groupBy": {
+         "column": "Department",
+         "aggregations": {
+           "Salary": "mean",
+           "Id": "count"
+         },
+         "resultColumnNames": {
+           "Salary": "avg_salary",
+           "Id": "employee_count"
+         }
+       },
+       "sort": {"column": "avg_salary", "direction": "desc"}
+     }' \
+     http://localhost:5000/api/data/query/employees
+```
+
+**Window Functions:**
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "window": [
+         {
+           "column": "sales",
+           "function": "movingavg",
+           "windowSize": 7,
+           "resultColumn": "sales_7day_avg"
+         },
+         {
+           "column": "sales",
+           "function": "cumsum",
+           "resultColumn": "running_total"
+         },
+         {
+           "column": "sales",
+           "function": "rank",
+           "orderByColumn": "sales",
+           "partitionByColumns": ["region"],
+           "resultColumn": "rank_in_region"
+         }
+       ],
+       "sort": {"column": "date", "direction": "asc"}
+     }' \
+     http://localhost:5000/api/data/query/sales
+```
+
+**Supported Window Functions:**
+- **Moving**: `movingavg`, `movingsum`, `movingmin`, `movingmax`, `movingstddev`, `movingvariance`, `movingcount`, `movingmedian`, `movingpercentile`, `ema`
+- **Cumulative**: `cumsum`, `cumavg`, `cummin`, `cummax`
+- **Lag/Lead**: `lag`, `lead`
+- **Ranking**: `rownumber`, `rank`, `denserank`
+- **Value**: `firstvalue`, `lastvalue`, `nthvalue`
+
+**Computed Columns:**
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "compute": [
+         {"resultColumn": "total_value", "expression": "[Price] * [Quantity]"},
+         {"resultColumn": "discounted", "expression": "[Price] * 0.9"}
+       ],
+       "select": ["ProductName", "Price", "Quantity", "total_value", "discounted"]
+     }' \
+     http://localhost:5000/api/data/query/products
+```
+
+**Join DataBlocks:**
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "merge": {
+         "otherDataBlockId": "customers",
+         "keyColumn": "customer_id",
+         "otherKeyColumn": "id",
+         "mode": "left"
+       },
+       "select": ["order_id", "customer_name", "total"]
+     }' \
+     http://localhost:5000/api/data/query/orders
+```
+
+Join modes: `inner` (default), `left`, `right`, `full`
+
+**Data Cleaning:**
+
+```bash
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "dropNulls": {"mode": "any"},
+       "fillNulls": {
+         "method": "mean",
+         "columns": ["price", "quantity"]
+       },
+       "dropDuplicates": {
+         "columns": ["email"],
+         "keep": "first"
+       }
+     }' \
+     http://localhost:5000/api/data/query/raw_data
+```
+
+**Query Response:**
+
+```json
+{
+  "data": [
+    {"Department": "Engineering", "avg_salary": 91500, "employee_count": 2},
+    {"Department": "Marketing", "avg_salary": 72000, "employee_count": 1}
+  ],
+  "totalRows": 2,
+  "returnedRows": 2,
+  "columns": ["Department", "avg_salary", "employee_count"],
+  "metadata": {
+    "executionTimeMs": 12,
+    "operationsApplied": ["GroupBy: Department", "Sort: avg_salary desc"],
+    "executedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**C# Client Example:**
+
+```csharp
+using Datafication.Server.Core.Models;
+
+var queryRequest = new DataBlockQueryRequest
+{
+    Where = new List<QueryFilterCondition>
+    {
+        new() { Column = "Status", Operator = "eq", Value = "Active" },
+        new() { Column = "Amount", Operator = "gte", Value = 1000 }
+    },
+    GroupBy = new QueryGroupByRequest
+    {
+        Column = "Category",
+        Aggregations = new Dictionary<string, string>
+        {
+            { "Amount", "sum" },
+            { "Id", "count" }
+        },
+        ResultColumnNames = new Dictionary<string, string>
+        {
+            { "Amount", "total_amount" },
+            { "Id", "order_count" }
+        }
+    },
+    Sort = new QuerySortCondition { Column = "total_amount", Direction = "desc" },
+    Take = 10
+};
+
+var response = await client.PostAsJsonAsync(
+    "http://localhost:5000/api/data/query/orders",
+    queryRequest);
+var result = await response.Content.ReadFromJsonAsync<DataBlockQueryResponse>();
+
+Console.WriteLine($"Found {result.ReturnedRows} categories");
+foreach (var row in result.Data)
+{
+    Console.WriteLine($"{row["Category"]}: ${row["total_amount"]} ({row["order_count"]} orders)");
+}
+```
+
 ### Registry Analytics
 
 Access comprehensive analytics and insights about your DataBlock registry:
@@ -811,8 +1036,11 @@ IServiceCollection AddSelfHostingDataBlockRegistryWithCache<TCache>(this IServic
 |----------|--------|-------------|
 | `/list` | GET | List all DataBlocks |
 | `/schema/{id}` | GET | Get DataBlock schema |
+| `/info/{id}` | GET | Get DataBlock summary info |
 | `/fetch/{id}` | GET | Fetch DataBlock data |
+| `/query/{id}` | POST | Comprehensive query with filtering, sorting, aggregation, window functions, joins, and more |
 | `/register` | POST | Register new DataBlock |
+| `/metadata/{id}` | PATCH | Update DataBlock metadata |
 | `/{id}` | DELETE | Unregister DataBlock |
 
 **Row Operations:**
@@ -823,6 +1051,13 @@ IServiceCollection AddSelfHostingDataBlockRegistryWithCache<TCache>(this IServic
 | `/rows/{id}/insert/{index}` | POST | Insert row at index |
 | `/rows/{id}/{index}` | PUT | Update row |
 | `/rows/{id}/{index}` | DELETE | Delete row |
+
+**Sink/Transform Operations:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/sinks` | GET | List registered sinks |
+| `/sink/{sinkId}/{dataBlockId}` | POST | Transform DataBlock using sink |
 
 **Registry Management:**
 
