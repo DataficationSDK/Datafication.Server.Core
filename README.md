@@ -1,10 +1,10 @@
 # Datafication.Server.Core
 
-A plug-and-play REST API library for .NET that enables instant HTTP access to DataBlock instances with enterprise features including authentication, caching, analytics, and row-level operations.
+A plug-and-play REST API library for .NET that enables instant HTTP access to DataBlock instances with features including authentication, caching, analytics, and row-level operations.
 
 ## Description
 
-Datafication.Server.Core transforms your ASP.NET Core application into a powerful DataBlock server with minimal configuration. The library provides a complete REST API layer for exposing DataBlock data, managing registries, and performing real-time data operations. Built on ASP.NET Core 8, it features a meta-architecture where DataBlocks manage DataBlock registrations, showcasing the flexibility of the Datafication platform while delivering production-ready features like JWT authentication, memory caching, background maintenance, and comprehensive analytics.
+Datafication.Server.Core transforms your ASP.NET Core application into a powerful DataBlock server with minimal configuration. The library provides a complete REST API layer for exposing DataBlock data, managing registries, and performing real-time data operations. Built on ASP.NET Core 8, it features a meta-architecture where DataBlocks manage DataBlock registrations, showcasing the flexibility of the Datafication platform while delivering features like JWT authentication, memory caching, background maintenance, and comprehensive analytics.
 
 ### Key Features
 
@@ -12,7 +12,7 @@ Datafication.Server.Core transforms your ASP.NET Core application into a powerfu
 - **Comprehensive Query Engine**: Full pandas-like query capabilities via REST - filtering, sorting, aggregation, grouping, window functions, joins, computed columns, and data transformations
 - **Meta Registry Architecture**: DataBlocks managing DataBlock registrations - eating our own dog food
 - **JWT Authentication**: Built-in support for secure Bearer token authentication with customizable policies
-- **Enterprise Caching**: Integrated memory cache support for high-performance data access
+- **Caching**: Integrated memory cache support for high-performance data access
 - **Row-Level Operations**: Full CRUD operations at the row level within DataBlocks
 - **Registry Analytics**: Comprehensive insights, usage patterns, and optimization recommendations
 - **Multiple Output Formats**: JSON, HTML, and CSV response formats
@@ -206,12 +206,12 @@ builder.Services.AddSelfHostingDataBlockRegistry(registryOptions =>
     // Performance settings
     registryOptions.EnableLazyLoading = true;
     registryOptions.EnableCaching = true;
-    registryOptions.EnableCompression = true;
-    
+    registryOptions.CompressSerializedData = true;
+
     // Cache configuration
-    registryOptions.CacheMaxSize = 5000;
-    registryOptions.CacheExpirationTime = TimeSpan.FromHours(2);
-    
+    registryOptions.MaxCacheSize = 5000;
+    registryOptions.CacheEvictionTime = TimeSpan.FromHours(2);
+
     // Maintenance settings
     registryOptions.MaintenanceInterval = TimeSpan.FromMinutes(30);
     registryOptions.BackgroundMaintenanceEnabled = true;
@@ -365,27 +365,27 @@ TOKEN="your-jwt-token-here"
 
 # List all available DataBlocks
 curl -H "Authorization: Bearer $TOKEN" \
-     http://localhost:5000/api/data/list
+     http://localhost:5000/api/data/datablocks
 
 # Get schema for a specific DataBlock
 curl -H "Authorization: Bearer $TOKEN" \
-     http://localhost:5000/api/data/schema/employees
+     http://localhost:5000/api/data/datablocks/employees/schema
 
 # Fetch data from a DataBlock (JSON format)
 curl -H "Authorization: Bearer $TOKEN" \
-     "http://localhost:5000/api/data/fetch/employees?limit=10&format=json"
+     "http://localhost:5000/api/data/datablocks/employees?limit=10&format=json"
 
 # Fetch with column filtering
 curl -H "Authorization: Bearer $TOKEN" \
-     "http://localhost:5000/api/data/fetch/employees?columns=Name,Department,Salary"
+     "http://localhost:5000/api/data/datablocks/employees?columns=Name,Department,Salary"
 
 # Fetch as CSV
 curl -H "Authorization: Bearer $TOKEN" \
-     "http://localhost:5000/api/data/fetch/employees?format=csv"
+     "http://localhost:5000/api/data/datablocks/employees?format=csv"
 
 # Fetch with pagination
 curl -H "Authorization: Bearer $TOKEN" \
-     "http://localhost:5000/api/data/fetch/employees?offset=10&limit=5"
+     "http://localhost:5000/api/data/datablocks/employees?offset=10&limit=5"
 ```
 
 ### Row Operations
@@ -401,7 +401,7 @@ client.DefaultRequestHeaders.Authorization =
 // Add a new row
 var addRequest = new { values = new object[] { 10, "David Lee", "Sales", 78000m, DateTime.Now } };
 var addResponse = await client.PostAsJsonAsync(
-    "http://localhost:5000/api/data/rows/employees", 
+    "http://localhost:5000/api/data/datablocks/employees/rows",
     addRequest);
 var addResult = await addResponse.Content.ReadFromJsonAsync<RowOperationResponse>();
 Console.WriteLine($"Added row at index {addResult.AffectedRowIndex}");
@@ -409,18 +409,18 @@ Console.WriteLine($"Added row at index {addResult.AffectedRowIndex}");
 // Insert row at specific position
 var insertRequest = new { values = new object[] { 11, "Eve Martinez", "HR", 72000m, DateTime.Now } };
 var insertResponse = await client.PostAsJsonAsync(
-    "http://localhost:5000/api/data/rows/employees/insert/3", 
+    "http://localhost:5000/api/data/datablocks/employees/rows/3",
     insertRequest);
 
 // Update existing row
 var updateRequest = new { values = new object[] { 1, "Alice Johnson-Smith", "Engineering", 98000m, new DateTime(2020, 3, 15) } };
 var updateResponse = await client.PutAsJsonAsync(
-    "http://localhost:5000/api/data/rows/employees/0", 
+    "http://localhost:5000/api/data/datablocks/employees/rows/0",
     updateRequest);
 
 // Delete row
 var deleteResponse = await client.DeleteAsync(
-    "http://localhost:5000/api/data/rows/employees/5");
+    "http://localhost:5000/api/data/datablocks/employees/rows/5");
 var deleteResult = await deleteResponse.Content.ReadFromJsonAsync<RowOperationResponse>();
 Console.WriteLine($"Current row count: {deleteResult.CurrentRowCount}");
 ```
@@ -433,31 +433,31 @@ curl -X POST \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"values": [10, "David Lee", "Sales", 78000, "2024-01-15"]}' \
-     http://localhost:5000/api/data/rows/employees
+     http://localhost:5000/api/data/datablocks/employees/rows
 
 # Insert row at index 3
 curl -X POST \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"values": [11, "Eve Martinez", "HR", 72000, "2024-01-15"]}' \
-     http://localhost:5000/api/data/rows/employees/insert/3
+     http://localhost:5000/api/data/datablocks/employees/rows/3
 
 # Update row at index 0
 curl -X PUT \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"values": [1, "Alice Updated", "Engineering", 98000, "2020-03-15"]}' \
-     http://localhost:5000/api/data/rows/employees/0
+     http://localhost:5000/api/data/datablocks/employees/rows/0
 
 # Delete row at index 5
 curl -X DELETE \
      -H "Authorization: Bearer $TOKEN" \
-     http://localhost:5000/api/data/rows/employees/5
+     http://localhost:5000/api/data/datablocks/employees/rows/5
 ```
 
 ### Comprehensive DataBlock Querying
 
-The `/query/{id}` endpoint provides full pandas-like query capabilities via REST. Execute complex operations including filtering, sorting, aggregation, grouping, window functions, joins, and data transformations in a single request.
+The `/datablocks/{id}/query` endpoint provides full pandas-like query capabilities via REST. Execute complex operations including filtering, sorting, aggregation, grouping, window functions, joins, and data transformations in a single request.
 
 **Basic Query Example:**
 
@@ -474,7 +474,7 @@ curl -X POST \
        "select": ["Name", "Department", "Salary"],
        "take": 10
      }' \
-     http://localhost:5000/api/data/query/employees
+     http://localhost:5000/api/data/datablocks/employees/query
 ```
 
 **Supported Query Operations:**
@@ -519,7 +519,7 @@ curl -X POST \
        },
        "sort": {"column": "avg_salary", "direction": "desc"}
      }' \
-     http://localhost:5000/api/data/query/employees
+     http://localhost:5000/api/data/datablocks/employees/query
 ```
 
 **Window Functions:**
@@ -551,7 +551,7 @@ curl -X POST \
        ],
        "sort": {"column": "date", "direction": "asc"}
      }' \
-     http://localhost:5000/api/data/query/sales
+     http://localhost:5000/api/data/datablocks/sales/query
 ```
 
 **Supported Window Functions:**
@@ -574,7 +574,7 @@ curl -X POST \
        ],
        "select": ["ProductName", "Price", "Quantity", "total_value", "discounted"]
      }' \
-     http://localhost:5000/api/data/query/products
+     http://localhost:5000/api/data/datablocks/products/query
 ```
 
 **Join DataBlocks:**
@@ -592,7 +592,7 @@ curl -X POST \
        },
        "select": ["order_id", "customer_name", "total"]
      }' \
-     http://localhost:5000/api/data/query/orders
+     http://localhost:5000/api/data/datablocks/orders/query
 ```
 
 Join modes: `inner` (default), `left`, `right`, `full`
@@ -614,7 +614,7 @@ curl -X POST \
          "keep": "first"
        }
      }' \
-     http://localhost:5000/api/data/query/raw_data
+     http://localhost:5000/api/data/datablocks/raw_data/query
 ```
 
 **Query Response:**
@@ -667,7 +667,7 @@ var queryRequest = new DataBlockQueryRequest
 };
 
 var response = await client.PostAsJsonAsync(
-    "http://localhost:5000/api/data/query/orders",
+    "http://localhost:5000/api/data/datablocks/orders/query",
     queryRequest);
 var result = await response.Content.ReadFromJsonAsync<DataBlockQueryResponse>();
 
@@ -889,13 +889,13 @@ Configuration for the meta DataBlock registry system.
 
 - **`EnableCaching`** (bool, default: `true`): Enable registry caching
 
-- **`EnableCompression`** (bool, default: `false`): Compress DataBlocks in storage
+- **`CompressSerializedData`** (bool, default: `true`): Compress DataBlocks in storage
 
 - **`CompressionLevel`** (CompressionLevel, default: `Optimal`): Compression level when enabled
 
-- **`CacheMaxSize`** (int, default: `1000`): Maximum cached DataBlocks
+- **`MaxCacheSize`** (int, default: `1000`): Maximum cached DataBlocks
 
-- **`CacheExpirationTime`** (TimeSpan, default: `2 hours`): Cache entry lifetime
+- **`CacheEvictionTime`** (TimeSpan, default: `1 hour`): Cache entry lifetime
 
 - **`CacheKeyPrefix`** (string, default: `"registry:"`): Cache key prefix
 
@@ -1034,30 +1034,30 @@ IServiceCollection AddSelfHostingDataBlockRegistryWithCache<TCache>(this IServic
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/list` | GET | List all DataBlocks |
-| `/schema/{id}` | GET | Get DataBlock schema |
-| `/info/{id}` | GET | Get DataBlock summary info |
-| `/fetch/{id}` | GET | Fetch DataBlock data |
-| `/query/{id}` | POST | Comprehensive query with filtering, sorting, aggregation, window functions, joins, and more |
-| `/register` | POST | Register new DataBlock |
-| `/metadata/{id}` | PATCH | Update DataBlock metadata |
-| `/{id}` | DELETE | Unregister DataBlock |
+| `/datablocks` | GET | List all DataBlocks |
+| `/datablocks/{id}` | GET | Fetch DataBlock data |
+| `/datablocks/{id}/schema` | GET | Get DataBlock schema |
+| `/datablocks/{id}/info` | GET | Get DataBlock summary info |
+| `/datablocks/{id}/query` | POST | Comprehensive query with filtering, sorting, aggregation, window functions, joins, and more |
+| `/datablocks` | POST | Register new DataBlock |
+| `/datablocks/{id}/metadata` | PATCH | Update DataBlock metadata |
+| `/datablocks/{id}` | DELETE | Unregister DataBlock |
 
 **Row Operations:**
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/rows/{id}` | POST | Add row to DataBlock |
-| `/rows/{id}/insert/{index}` | POST | Insert row at index |
-| `/rows/{id}/{index}` | PUT | Update row |
-| `/rows/{id}/{index}` | DELETE | Delete row |
+| `/datablocks/{id}/rows` | POST | Add row to DataBlock |
+| `/datablocks/{id}/rows/{index}` | POST | Insert row at index |
+| `/datablocks/{id}/rows/{index}` | PUT | Update row |
+| `/datablocks/{id}/rows/{index}` | DELETE | Delete row |
 
 **Sink/Transform Operations:**
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/sinks` | GET | List registered sinks |
-| `/sink/{sinkId}/{dataBlockId}` | POST | Transform DataBlock using sink |
+| `/datablocks/{dataBlockId}/transform/{sinkId}` | POST | Transform DataBlock using sink |
 
 **Registry Management:**
 
@@ -1283,7 +1283,7 @@ app.Run();
    options.EnableCaching = true;
    options.CacheDurationSeconds = 600;
    registryOptions.EnableCaching = true;
-   registryOptions.CacheMaxSize = 5000;
+   registryOptions.MaxCacheSize = 5000;
    ```
 
 2. **Adjust Row Limits**: Set `MaxRowsPerRequest` based on your data size and network capacity
@@ -1308,7 +1308,7 @@ app.Run();
 
 6. **Compression**: Enable compression for large DataBlocks to save storage space
    ```csharp
-   registryOptions.EnableCompression = true;
+   registryOptions.CompressSerializedData = true;
    registryOptions.CompressionLevel = CompressionLevel.Optimal;
    ```
 
