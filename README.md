@@ -15,7 +15,7 @@ Datafication.Server.Core transforms your ASP.NET Core application into a powerfu
 - **Caching**: Integrated memory cache support for high-performance data access
 - **Row-Level Operations**: Full CRUD operations at the row level within DataBlocks
 - **Registry Analytics**: Comprehensive insights, usage patterns, and optimization recommendations
-- **Multiple Output Formats**: JSON, HTML, and CSV response formats
+- **Multiple Output Formats**: JSON (built-in), plus HTML, CSV, Markdown via registered sinks
 - **Flexible Configuration**: Development, production, and enterprise presets
 - **Connector Registry**: Dynamic registration and management of data connectors
 - **Sink Registry**: Support for multiple output sink types (PDF, Excel, etc.)
@@ -172,6 +172,8 @@ Full control over server behavior with custom options:
 
 ```csharp
 using Datafication.Server.Core.Extensions;
+using Datafication.Core.Sinks;
+using Datafication.Sinks.Connectors.CsvConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -190,10 +192,13 @@ builder.Services.AddDataficationServer(options =>
     // Caching
     options.EnableCaching = true;
     options.CacheDurationSeconds = 600;  // 10 minutes
-    
-    // Output Formats
-    options.SupportedOutputFormats = new[] { "json", "html", "csv" };
-    
+
+    // Register sinks for output formats
+    // Note: "json" format has a built-in fallback, so a JSON sink is optional
+    options.RegisterSink<HtmlTableSink>("html");
+    options.RegisterSink<CsvStringSink>("csv");
+    options.RegisterSink<MarkdownTableSink>("markdown");
+
     // Access Policies
     options.AccessPolicies = new Dictionary<string, string[]>
     {
@@ -859,8 +864,6 @@ Main configuration class for DataBlock server behavior.
 
 - **`CacheDurationSeconds`** (int, default: `300`): Cache expiration time in seconds
 
-- **`SupportedOutputFormats`** (IEnumerable<string>, default: `["json", "html"]`): Supported response formats
-
 - **`IncludeDetailedErrors`** (bool, default: `false`): Include detailed error messages (disable in production)
 
 - **`AccessPolicies`** (IDictionary<string, string[]>): Custom policy-to-claims mapping
@@ -1106,7 +1109,9 @@ builder.Services.AddDataficationServer(options =>
 {
     options.AllowAnonymousAccess = true;  // Public API
     options.MaxRowsPerRequest = 1000;
-    options.SupportedOutputFormats = new[] { "json", "csv" };
+
+    // Register sinks for output formats (json has built-in fallback)
+    options.RegisterSink<CsvStringSink>("csv");
 });
 
 builder.Services.AddControllers();
@@ -1224,14 +1229,15 @@ builder.Services.AddDataficationServer(options =>
     options.MaxRegisteredDataBlocks = 10000;  // Many datasets
     options.EnableCaching = true;
     options.CacheDurationSeconds = 3600;  // 1 hour cache
-    options.SupportedOutputFormats = new[] { "json", "csv", "html" };
-    
+
     // Register connectors for various data sources
     options.RegisterConnector<CsvDataConnector, CsvConnectorConfiguration>("csv");
     options.RegisterConnector<ParquetDataConnector, ParquetConnectorConfiguration>("parquet");
     options.RegisterConnector<S3Connector, S3ConnectorConfiguration>("s3");
-    
-    // Register sinks for export
+
+    // Register sinks for output formats and export
+    options.RegisterSink<HtmlTableSink>("html");
+    options.RegisterSink<CsvStringSink>("csv");
     options.RegisterSink<ExcelDataSink>("excel");
     options.RegisterSink<PdfDataSink>("pdf");
 });
