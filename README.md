@@ -128,11 +128,12 @@ For development environments with detailed logging and frequent maintenance:
 
 ```csharp
 using Datafication.Server.Core.Extensions;
+using Datafication.Server.Core.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Development-optimized with debugging features
-builder.Services.AddDevelopmentSelfHostingDataBlockRegistryWithFeatures();
+builder.Services.AddDataBlockRegistry(RegistryPreset.Development);
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -149,11 +150,12 @@ For production environments with enterprise features and optimized settings:
 
 ```csharp
 using Datafication.Server.Core.Extensions;
+using Datafication.Server.Core.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Enterprise-ready with all features and optimized caching
-builder.Services.AddEnterpriseSelfHostingDataBlockRegistry();
+builder.Services.AddDataBlockRegistry(RegistryPreset.Enterprise);
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -200,8 +202,8 @@ builder.Services.AddDataficationServer(options =>
     };
 });
 
-// Configure meta registry options
-builder.Services.AddSelfHostingDataBlockRegistry(registryOptions =>
+// Configure registry with custom options
+builder.Services.AddDataBlockRegistry(registryOptions =>
 {
     // Performance settings
     registryOptions.EnableLazyLoading = true;
@@ -909,30 +911,44 @@ Configuration for the meta DataBlock registry system.
 
 ### Configuration Presets
 
-Pre-configured options for common scenarios:
+Pre-configured options for common scenarios using `RegistryPreset`:
 
-| Extension Method | Use Case | Cache Size | Maintenance | Logging | Best For |
-|-----------------|----------|------------|-------------|---------|----------|
-| `AddMetaDataBlockRegistry()` | Basic usage | 1000 | 30min | Minimal | Simple applications |
-| `AddDevelopmentMetaDataBlockRegistry()` | Development | 100 | 5min | Detailed | Local debugging |
-| `AddProductionMetaDataBlockRegistry()` | Production | 1000 | 30min | Minimal | Production deployments |
-| `AddEnterpriseMetaDataBlockRegistry()` | Enterprise | 5000 | 1hr | Minimal | High-volume systems |
-| `AddDevelopmentMetaDataBlockRegistryWithFeatures()` | Testing | 200 | 2min | Detailed | Integration testing |
+| Preset | Use Case | Cache Size | Maintenance | Logging | Analytics |
+|--------|----------|------------|-------------|---------|-----------|
+| `RegistryPreset.Development` | Development/Debug | 200 | 2 min | Detailed | Yes |
+| `RegistryPreset.Production` | Production | 1000 | 30 min | Minimal | No |
+| `RegistryPreset.Enterprise` | Enterprise | 5000 | 1 hour | Minimal | Yes |
+
+**Preset Details:**
+
+- **Development**: Optimized for debugging with detailed logging, short cache duration (5 min), no compression, and quick data expiration (1 day).
+- **Production**: Balanced performance with compression enabled, longer cache (2 hours), and background maintenance.
+- **Enterprise**: Full-featured with largest cache (4 hours), analytics service, optimal compression, and extended data retention (180 days).
 
 **Usage:**
 
 ```csharp
-// Basic
-builder.Services.AddMetaDataBlockRegistry();
+using Datafication.Server.Core.Configuration;
+
+// Basic (default settings)
+builder.Services.AddDataBlockRegistry();
 
 // Development
-builder.Services.AddDevelopmentMetaDataBlockRegistryWithFeatures();
+builder.Services.AddDataBlockRegistry(RegistryPreset.Development);
 
 // Production
-builder.Services.AddProductionMetaDataBlockRegistry();
+builder.Services.AddDataBlockRegistry(RegistryPreset.Production);
 
 // Enterprise
-builder.Services.AddEnterpriseMetaDataBlockRegistry();
+builder.Services.AddDataBlockRegistry(RegistryPreset.Enterprise);
+
+// Custom configuration
+builder.Services.AddDataBlockRegistry(options =>
+{
+    options.EnableCaching = true;
+    options.MaxCacheSize = 2000;
+    options.CacheEvictionTime = TimeSpan.FromHours(1);
+});
 ```
 
 ## API Reference
@@ -1013,16 +1029,14 @@ builder.Services.AddEnterpriseMetaDataBlockRegistry();
 IServiceCollection AddDataficationServer(this IServiceCollection services)
 IServiceCollection AddDataficationServer(this IServiceCollection services, Action<DataBlockServerOptions> configure)
 
-// Registry presets
-IServiceCollection AddMetaDataBlockRegistry(this IServiceCollection services)
-IServiceCollection AddDevelopmentMetaDataBlockRegistry(this IServiceCollection services)
-IServiceCollection AddProductionMetaDataBlockRegistry(this IServiceCollection services)
-IServiceCollection AddEnterpriseMetaDataBlockRegistry(this IServiceCollection services)
-IServiceCollection AddDevelopmentMetaDataBlockRegistryWithFeatures(this IServiceCollection services)
+// Registry with presets (recommended)
+IServiceCollection AddDataBlockRegistry(this IServiceCollection services)
+IServiceCollection AddDataBlockRegistry(this IServiceCollection services, RegistryPreset preset)
+IServiceCollection AddDataBlockRegistry(this IServiceCollection services, Action<MetaRegistryOptions> configure)
+IServiceCollection AddDataBlockRegistry(this IServiceCollection services, Action<MetaRegistryOptions> configure, bool includeMaintenanceService, bool includeAnalytics = false)
 
-// Custom registry configuration
-IServiceCollection AddSelfHostingDataBlockRegistry(this IServiceCollection services, Action<MetaRegistryOptions> configure)
-IServiceCollection AddSelfHostingDataBlockRegistryWithCache<TCache>(this IServiceCollection services, Action<MetaRegistryOptions> configure)
+// Registry with custom cache
+IServiceCollection AddDataBlockRegistry<TCache>(this IServiceCollection services, Action<MetaRegistryOptions>? configure = null)
     where TCache : class, IDataCache
 ```
 
@@ -1173,7 +1187,7 @@ builder.Services.AddDataficationServer(options =>
     options.CacheDurationSeconds = 300;
 });
 
-builder.Services.AddProductionMetaDataBlockRegistry();
+builder.Services.AddDataBlockRegistry(RegistryPreset.Production);
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -1222,11 +1236,8 @@ builder.Services.AddDataficationServer(options =>
     options.RegisterSink<PdfDataSink>("pdf");
 });
 
-// Enterprise registry with all features
-builder.Services.AddEnterpriseMetaDataBlockRegistry();
-
-// Background services
-builder.Services.AddHostedService<RegistryMaintenanceService>();
+// Enterprise registry with all features (includes maintenance and analytics)
+builder.Services.AddDataBlockRegistry(RegistryPreset.Enterprise);
 
 builder.Services.AddControllers();
 
@@ -1331,13 +1342,13 @@ app.Run();
 10. **Environment-Specific Presets**: Use appropriate preset for your environment
     ```csharp
     // Development: Frequent maintenance, detailed logging
-    services.AddDevelopmentMetaDataBlockRegistryWithFeatures();
-    
+    services.AddDataBlockRegistry(RegistryPreset.Development);
+
     // Production: Optimized settings, minimal logging
-    services.AddProductionMetaDataBlockRegistry();
-    
-    // Enterprise: Maximum cache, background maintenance
-    services.AddEnterpriseMetaDataBlockRegistry();
+    services.AddDataBlockRegistry(RegistryPreset.Production);
+
+    // Enterprise: Maximum cache, background maintenance, analytics
+    services.AddDataBlockRegistry(RegistryPreset.Enterprise);
     ```
 
 11. **Monitor Cache Hit Rates**: Check analytics to tune cache settings
