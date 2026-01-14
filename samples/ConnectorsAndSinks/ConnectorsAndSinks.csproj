@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Datafication.Core" Version="1.0.6" />
-    <PackageReference Include="Datafication.Server.Core" Version="1.0.6" />
-    <PackageReference Include="Datafication.MemoryCache" Version="1.0.6" />
-    <PackageReference Include="Datafication.CsvConnector" Version="1.0.6" />
+    <PackageReference Include="Datafication.Core" Version="1.0.7" />
+    <PackageReference Include="Datafication.Server.Core" Version="1.0.7" />
+    <PackageReference Include="Datafication.MemoryCache" Version="1.0.7" />
+    <PackageReference Include="Datafication.CsvConnector" Version="1.0.7" />
   </ItemGroup>
 
   <ItemGroup>
