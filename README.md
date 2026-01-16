@@ -1,5 +1,7 @@
 # Datafication.Server.Core
 
+[![NuGet](https://img.shields.io/nuget/v/Datafication.Server.Core.svg)](https://www.nuget.org/packages/Datafication.Server.Core)
+
 A plug-and-play REST API library for .NET that enables instant HTTP access to DataBlock instances with features including authentication, caching, analytics, and row-level operations.
 
 ## Description
