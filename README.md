@@ -64,7 +64,7 @@ Datafication.Server.Core transforms your ASP.NET Core application into a powerfu
 > **Note**: Datafication.Server.Core is currently in pre-release. The packages are now available on nuget.org.
 
 ```bash
-dotnet add package Datafication.Server.Core --version 1.0.8
+dotnet add package Datafication.Server.Core --version 1.0.9
 ```
 
 **Running the Samples:**
@@ -935,6 +935,8 @@ builder.Services.AddDataBlockRegistry(options =>
 ```
 
 ## API Reference
+
+For complete API documentation, see the [Datafication.Server.Core API Reference](https://datafication.co/help/api/reference/Datafication.Server.Core.html).
 
 ### Core Classes
 
